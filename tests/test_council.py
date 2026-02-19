@@ -31,17 +31,55 @@ MOCK_ANSWER = "This is a thoughtful model answer about the question."
 MOCK_REVIEW = "Model A provided the best answer. Model B was too brief. Model C missed key points."
 
 MOCK_CHAIRMAN_JSON = json.dumps({
-    "final_answer": "The synthesized answer combining all perspectives.",
-    "disagreements": [
+    "executive_summary": "The synthesized strategic plan combining all perspectives.",
+    "deliverables": [
         {
-            "topic": "Approach to testing",
-            "summary": "Models disagreed on whether unit or integration tests are more important.",
-            "chairman_verdict": "Both are necessary; unit tests for speed, integration for confidence."
+            "name": "Core Platform MVP",
+            "description": "Minimum viable product with essential user-facing features.",
+            "phase": "Phase 1"
         }
     ],
-    "consensus_points": ["All models agreed testing is essential.", "All recommended starting early."],
+    "success_criteria": [
+        {
+            "metric": "User activation rate",
+            "target": "40% within first week",
+            "rationale": "Validates core value proposition."
+        }
+    ],
+    "phases": [
+        {
+            "name": "Phase 1: Foundation",
+            "duration": "4-6 weeks",
+            "objectives": ["Define core user flows", "Establish architecture patterns"],
+            "decision_point": "Core user flow validated with 5+ test users"
+        }
+    ],
+    "risks": [
+        {
+            "risk": "Scope creep delays MVP launch",
+            "severity": "high",
+            "mitigation": "Strict feature freeze after week 2; defer non-critical features to Phase 2."
+        }
+    ],
+    "moats": [
+        {
+            "type": "Data Advantage",
+            "description": "Aggregated usage data improves recommendations over time.",
+            "durability": "Strong — compounds with each new user and hard to replicate."
+        }
+    ],
+    "strategic_priorities": ["Ship MVP before scaling", "Validate demand before building infrastructure."],
+    "resource_considerations": "Requires 2-3 developers, 1 designer. Budget for 3 months of runway.",
+    "go_no_go_criteria": ["Market validation complete", "Core team assembled"],
+    "disagreements": [
+        {
+            "topic": "Build vs. buy for infrastructure",
+            "summary": "Advisors disagreed on whether to build custom infrastructure early or use managed services.",
+            "chairman_verdict": "Use managed services initially to preserve runway; revisit when scale demands it."
+        }
+    ],
     "confidence": "high",
-    "confidence_note": "Strong alignment across all councilors."
+    "confidence_note": "Strong alignment across all advisors on phased approach."
 })
 
 
@@ -184,7 +222,10 @@ def test_stage3_json_parse_valid():
     assert result is not None
     assert result["confidence"] == "high"
     assert len(result["disagreements"]) == 1
-    assert len(result["consensus_points"]) == 2
+    assert len(result["strategic_priorities"]) == 2
+    assert len(result["deliverables"]) == 1
+    assert len(result["phases"]) == 1
+    assert len(result["moats"]) == 1
 
 
 def test_stage3_json_parse_markdown_fenced():
@@ -208,7 +249,7 @@ def test_stage3_json_parse_with_preamble():
     with_preamble = f"Here is my synthesis:\n\n{MOCK_CHAIRMAN_JSON}"
     result = council.parse_chairman_json(with_preamble)
     assert result is not None
-    assert "final_answer" in result
+    assert "executive_summary" in result
 
 
 def test_stage3_json_parse_malformed():
@@ -250,9 +291,16 @@ async def test_full_pipeline_mock():
 
     # Verify output structure
     assert result["question"] == "Should I use Go or Python?"
-    assert "final_answer" in result
+    assert "executive_summary" in result
+    assert isinstance(result["deliverables"], list)
+    assert isinstance(result["success_criteria"], list)
+    assert isinstance(result["phases"], list)
+    assert isinstance(result["risks"], list)
+    assert isinstance(result["moats"], list)
+    assert isinstance(result["strategic_priorities"], list)
+    assert isinstance(result["resource_considerations"], str)
+    assert isinstance(result["go_no_go_criteria"], list)
     assert isinstance(result["disagreements"], list)
-    assert isinstance(result["consensus_points"], list)
     assert result["confidence"] in ("high", "medium", "low", "unknown")
     assert len(result["individual_answers"]) == 4
     assert len(result["peer_reviews"]) == 4

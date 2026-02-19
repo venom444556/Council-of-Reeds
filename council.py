@@ -111,7 +111,13 @@ async def stage1_first_opinions(client: httpx.AsyncClient, question: str) -> tup
     print("⚖️  Stage 1: Gathering first opinions...", file=sys.stderr)
 
     system_prompt = (
-        "You are a council member providing an expert, independent opinion. "
+        "You are a strategic planning advisor on a council that refines visions into actionable strategic plans. "
+        "Focus on: deliverables, milestones, success criteria, risks, resource needs, timeline phases, "
+        "go/no-go decision points, and moats (defensible strategic advantages). "
+        "Do NOT recommend specific technologies, tools, vendors, or implementation details "
+        "— a separate product manager handles those decisions. "
+        "Stay at the strategic level: what needs to be built, why, in what order, "
+        "how to measure success, what could go wrong, and what makes this defensible. "
         "Be direct, thorough, and honest. Do not hedge unnecessarily. "
         "Aim for 200-400 words."
     )
@@ -171,20 +177,28 @@ async def stage2_reviews(
     print("🔍  Stage 2: Cross-reviewing...", file=sys.stderr)
 
     review_system = (
-        "You are evaluating answers from other AI models to the same question. "
+        "You are evaluating strategic plans from other AI models for the same initiative. "
         "The models are anonymized as Model A, B, C. Do not play favorites. "
-        "Focus on accuracy, completeness, and insight."
+        "Evaluate strategic thinking quality: Are deliverables clear and measurable? "
+        "Are risks identified with viable mitigations? Are phases sequenced logically? "
+        "Are success criteria specific enough to be actionable? "
+        "Are moats clearly identified and defensible? "
+        "Ignore any specific technology or tool recommendations — those are out of scope."
     )
 
     async def review_one(councilor: dict) -> tuple[dict, bool, str]:
         anon_answers = anonymize_answers(answers, councilor["id"])
         prompt = (
-            f"Original question: {question}\n\n"
-            f"Here are three other answers:\n\n{anon_answers}\n\n"
+            f"Strategic initiative: {question}\n\n"
+            f"Here are three strategic plans from other advisors:\n\n{anon_answers}\n\n"
             "Please:\n"
-            "1. Rank these answers from best to worst (Model A, B, or C) with brief reasoning\n"
-            "2. Note any significant disagreements or contradictions between them\n"
-            "3. Identify what each answer got right or missed\n"
+            "1. Rank these plans from strongest to weakest (Model A, B, or C) "
+            "based on strategic clarity, risk coverage, and actionability\n"
+            "2. Note any significant strategic disagreements — different priorities, "
+            "conflicting phase sequences, or incompatible success criteria\n"
+            "3. Identify strategic gaps: missing risks, vague deliverables, "
+            "unrealistic timelines, weak or absent moats, or absent decision gates\n"
+            "Ignore any specific technology or tool recommendations. "
             "Be specific and critical. 150-300 words."
         )
         ok, content = await call_model(
@@ -252,7 +266,7 @@ async def stage3_chairman(
     reviews: list[dict] | None,
     fast_mode: bool = False,
 ) -> dict:
-    """Chairman synthesizes everything into a final answer + disagreement breakdown."""
+    """Chairman synthesizes strategic plans into a unified strategic plan."""
     print("👑  Stage 3: Chairman synthesizing...", file=sys.stderr)
 
     # Build the full picture for the chairman
@@ -261,10 +275,11 @@ async def stage3_chairman(
     )
 
     chairman_prompt = (
-        f"You are the Chairman of an LLM Council. Your council was asked:\n\n"
-        f"**QUESTION:** {question}\n\n"
+        f"You are the Chairman of a Strategic Planning Council. "
+        f"Your council was asked to create a strategic plan for:\n\n"
+        f"**INITIATIVE:** {question}\n\n"
         f"---\n\n"
-        f"**INDIVIDUAL ANSWERS:**\n\n{answers_block}\n\n"
+        f"**INDIVIDUAL STRATEGIC PLANS:**\n\n{answers_block}\n\n"
         f"---\n\n"
     )
 
@@ -275,19 +290,62 @@ async def stage3_chairman(
         chairman_prompt += f"**PEER REVIEWS:**\n\n{reviews_block}\n\n---\n\n"
 
     chairman_prompt += (
-        "Your job: Produce a response in the following JSON format (and ONLY JSON, no markdown wrapper):\n\n"
+        "Your job: Synthesize all perspectives into a unified strategic plan. "
+        "Do NOT recommend specific technologies, tools, or vendors. "
+        "Produce a response in the following JSON format (and ONLY JSON, no markdown wrapper):\n\n"
         '{\n'
-        '  "final_answer": "Your comprehensive synthesized answer here. Draw on the best insights from all models. Be definitive. 300-600 words.",\n'
-        '  "disagreements": [\n'
+        '  "executive_summary": "A 300-600 word strategic synthesis. What is the initiative, '
+        'why it matters, and the recommended strategic approach. Draw on the best insights '
+        'from all advisors. Be definitive.",\n'
+        '  "deliverables": [\n'
         '    {\n'
-        '      "topic": "Short label for what they disagreed on",\n'
-        '      "summary": "What the disagreement was and why it matters",\n'
-        '      "chairman_verdict": "Your take on which view is more accurate and why"\n'
+        '      "name": "Short name for the deliverable",\n'
+        '      "description": "What this deliverable is and why it matters",\n'
+        '      "phase": "Which phase this belongs to (e.g. Phase 1, Phase 2)"\n'
         '    }\n'
         '  ],\n'
-        '  "consensus_points": ["Point 1 all models agreed on", "Point 2..."],\n'
+        '  "success_criteria": [\n'
+        '    {\n'
+        '      "metric": "What to measure",\n'
+        '      "target": "Specific target or threshold",\n'
+        '      "rationale": "Why this metric matters"\n'
+        '    }\n'
+        '  ],\n'
+        '  "phases": [\n'
+        '    {\n'
+        '      "name": "Phase name (e.g. Phase 1: Foundation)",\n'
+        '      "duration": "Estimated duration (e.g. 2-4 weeks)",\n'
+        '      "objectives": ["Key objective 1", "Key objective 2"],\n'
+        '      "decision_point": "What must be true to proceed to the next phase"\n'
+        '    }\n'
+        '  ],\n'
+        '  "risks": [\n'
+        '    {\n'
+        '      "risk": "Description of the risk",\n'
+        '      "severity": "high|medium|low",\n'
+        '      "mitigation": "How to mitigate this risk"\n'
+        '    }\n'
+        '  ],\n'
+        '  "moats": [\n'
+        '    {\n'
+        '      "type": "Category of strategic advantage (e.g. Network Effect, Data Advantage, Switching Cost, Brand, Expertise)",\n'
+        '      "description": "What this moat is and how it works",\n'
+        '      "durability": "How long-lasting and defensible this advantage is"\n'
+        '    }\n'
+        '  ],\n'
+        '  "strategic_priorities": ["Priority 1 all advisors agreed on", "Priority 2..."],\n'
+        '  "resource_considerations": "High-level resource needs: team size, skill areas, '
+        'budget range, timeline constraints. No specific tool or vendor names.",\n'
+        '  "go_no_go_criteria": ["Criterion that must be met to proceed", "Another criterion..."],\n'
+        '  "disagreements": [\n'
+        '    {\n'
+        '      "topic": "Short label for what advisors disagreed on",\n'
+        '      "summary": "What the strategic disagreement was and why it matters",\n'
+        '      "chairman_verdict": "Your take on which strategic approach is stronger and why"\n'
+        '    }\n'
+        '  ],\n'
         '  "confidence": "high|medium|low",\n'
-        '  "confidence_note": "Brief note on why (e.g. models strongly aligned, or significant uncertainty exists)"\n'
+        '  "confidence_note": "Brief note on confidence level"\n'
         '}'
     )
 
@@ -295,7 +353,7 @@ async def stage3_chairman(
         client,
         CHAIRMAN["model"],
         [
-            {"role": "system", "content": "You are a synthesis expert. Output only valid JSON, no markdown code blocks."},
+            {"role": "system", "content": "You are a strategic planning synthesis expert. Your job is to distill multiple strategic perspectives into one cohesive strategic plan. Output only valid JSON, no markdown code blocks."},
             {"role": "user", "content": chairman_prompt},
         ],
         label=CHAIRMAN["label"],
@@ -304,9 +362,16 @@ async def stage3_chairman(
     if not ok:
         print(f"   ✗ Chairman call failed: {raw}", file=sys.stderr)
         return {
-            "final_answer": f"Chairman failed to respond: {raw}",
+            "executive_summary": f"Chairman failed to respond: {raw}",
+            "deliverables": [],
+            "success_criteria": [],
+            "phases": [],
+            "risks": [],
+            "moats": [],
+            "strategic_priorities": [],
+            "resource_considerations": "",
+            "go_no_go_criteria": [],
             "disagreements": [],
-            "consensus_points": [],
             "confidence": "unknown",
             "confidence_note": "Chairman call failed.",
         }
@@ -320,20 +385,34 @@ async def stage3_chairman(
         print(f"   ⚠️  Chairman JSON parse failed, using raw text fallback", file=sys.stderr)
         print(f"   📝 Raw response (first 200 chars): {raw[:200]}", file=sys.stderr)
         synthesis = {
-            "final_answer": raw,
+            "executive_summary": raw,
+            "deliverables": [],
+            "success_criteria": [],
+            "phases": [],
+            "risks": [],
+            "moats": [],
+            "strategic_priorities": [],
+            "resource_considerations": "",
+            "go_no_go_criteria": [],
             "disagreements": [],
-            "consensus_points": [],
             "confidence": "unknown",
             "confidence_note": "Chairman response could not be parsed as JSON.",
         }
 
     # Validate required keys exist and have correct types
     _SCHEMA = {
-        "final_answer":    (str, ""),
-        "disagreements":   (list, []),
-        "consensus_points":(list, []),
-        "confidence":      (str, "unknown"),
-        "confidence_note": (str, ""),
+        "executive_summary":       (str, ""),
+        "deliverables":            (list, []),
+        "success_criteria":        (list, []),
+        "phases":                  (list, []),
+        "risks":                   (list, []),
+        "moats":                   (list, []),
+        "strategic_priorities":    (list, []),
+        "resource_considerations": (str, ""),
+        "go_no_go_criteria":       (list, []),
+        "disagreements":           (list, []),
+        "confidence":              (str, "unknown"),
+        "confidence_note":         (str, ""),
     }
     for key, (expected_type, default) in _SCHEMA.items():
         val = synthesis.get(key)
@@ -374,9 +453,16 @@ async def run_council(question: str, fast: bool = False) -> dict:
     # Assemble full output (synthesis keys guaranteed by _SCHEMA validation)
     output = {
         "question": question,
-        "final_answer": synthesis["final_answer"],
+        "executive_summary": synthesis["executive_summary"],
+        "deliverables": synthesis["deliverables"],
+        "success_criteria": synthesis["success_criteria"],
+        "phases": synthesis["phases"],
+        "risks": synthesis["risks"],
+        "moats": synthesis["moats"],
+        "strategic_priorities": synthesis["strategic_priorities"],
+        "resource_considerations": synthesis["resource_considerations"],
+        "go_no_go_criteria": synthesis["go_no_go_criteria"],
         "disagreements": synthesis["disagreements"],
-        "consensus_points": synthesis["consensus_points"],
         "confidence": synthesis["confidence"],
         "confidence_note": synthesis["confidence_note"],
         "individual_answers": [

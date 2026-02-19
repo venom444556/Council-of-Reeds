@@ -17,36 +17,99 @@ import council_pdf
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 VALID_COUNCIL_JSON = {
-    "question": "Should I use Go or Python for my startup?",
-    "final_answer": "Python is the better choice for most startups. It offers rapid prototyping, a vast ecosystem of libraries, and easier hiring. Go excels at performance-critical services but introduces more development friction early on.",
-    "disagreements": [
+    "question": "Build a SaaS analytics platform for small businesses",
+    "executive_summary": "A phased approach to building a SaaS analytics platform is recommended. Start with a focused MVP targeting a single vertical, validate product-market fit, then expand. The key strategic advantage is simplicity — most competitors over-serve enterprise customers, leaving small businesses underserved.",
+    "deliverables": [
         {
-            "topic": "Performance vs. Productivity",
-            "summary": "Models disagreed on whether Go's performance advantage matters at startup scale.",
-            "chairman_verdict": "At startup scale, development speed matters more than raw performance. Python wins here."
+            "name": "Market Validation Report",
+            "description": "Customer interviews, competitor analysis, and demand signal assessment.",
+            "phase": "Phase 1"
         },
         {
-            "topic": "Type Safety",
-            "summary": "Some models argued Go's type system catches bugs earlier, while others said Python's flexibility is more valuable.",
-            "chairman_verdict": "Type safety helps at scale, but startups need to iterate fast. Python with type hints is a good middle ground."
+            "name": "MVP Analytics Dashboard",
+            "description": "Core dashboard with 3-5 key metrics for a single vertical.",
+            "phase": "Phase 2"
         }
     ],
-    "consensus_points": [
-        "Both languages are production-ready and widely used",
-        "The team's existing expertise should be a major factor",
-        "Python has a larger ecosystem for ML/data tasks"
+    "success_criteria": [
+        {
+            "metric": "Customer interview completion",
+            "target": "20+ interviews in target vertical",
+            "rationale": "Sufficient sample to identify patterns in needs and willingness to pay."
+        },
+        {
+            "metric": "MVP trial conversion",
+            "target": "15% of trial users convert to paid within 30 days",
+            "rationale": "Industry benchmark for B2B SaaS at early stage."
+        }
+    ],
+    "phases": [
+        {
+            "name": "Phase 1: Discovery",
+            "duration": "3-4 weeks",
+            "objectives": ["Complete customer interviews", "Map competitive landscape", "Define MVP scope"],
+            "decision_point": "Evidence of willingness to pay from 5+ potential customers"
+        },
+        {
+            "name": "Phase 2: Build MVP",
+            "duration": "6-8 weeks",
+            "objectives": ["Build core dashboard", "Onboard 10 beta users", "Establish feedback loop"],
+            "decision_point": "3+ beta users actively using product weekly"
+        }
+    ],
+    "risks": [
+        {
+            "risk": "Small business churn rate too high to sustain",
+            "severity": "high",
+            "mitigation": "Focus on vertical with highest retention patterns; build annual pricing incentives."
+        },
+        {
+            "risk": "Feature creep during MVP phase",
+            "severity": "medium",
+            "mitigation": "Strict 5-metric cap for MVP dashboard; maintain a backlog but defer."
+        }
+    ],
+    "moats": [
+        {
+            "type": "Data Advantage",
+            "description": "Aggregated anonymized benchmarks from SMB customers create unique industry insights.",
+            "durability": "Strong — compounds with each new customer and cannot be replicated without equivalent user base."
+        },
+        {
+            "type": "Switching Cost",
+            "description": "Historical data and custom dashboards create stickiness once onboarded.",
+            "durability": "Moderate — grows stronger over time as data history accumulates."
+        }
+    ],
+    "strategic_priorities": [
+        "Validate demand before building",
+        "Focus on one vertical before expanding",
+        "Keep MVP scope ruthlessly small"
+    ],
+    "resource_considerations": "Requires 2 developers and 1 designer for MVP. Founder should lead customer interviews. Budget for 4-6 months of runway before revenue.",
+    "go_no_go_criteria": [
+        "At least 5 potential customers express willingness to pay",
+        "Clear vertical identified with accessible customer base",
+        "Team capacity confirmed for 6-8 week build cycle"
+    ],
+    "disagreements": [
+        {
+            "topic": "Single vertical vs. horizontal launch",
+            "summary": "Some advisors recommended launching horizontally to maximize addressable market, while others argued for vertical focus.",
+            "chairman_verdict": "Vertical focus is the stronger strategy at this stage. Horizontal expansion can follow once the core value proposition is proven."
+        }
     ],
     "confidence": "high",
-    "confidence_note": "Strong alignment across all councilors on Python for most startup use cases.",
+    "confidence_note": "Strong alignment across all advisors on the phased, validation-first approach.",
     "individual_answers": [
-        {"model": "DeepSeek R1", "answer": "Python is the clear winner for startups. Here's my reasoning step by step..."},
-        {"model": "Hermes 3 405B", "answer": "Both languages have merits, but Python's ecosystem gives it the edge..."},
-        {"model": "Qwen3 Coder 480B", "answer": "From a systems perspective, Go has cleaner concurrency patterns..."},
-        {"model": "Llama 3.3 70B", "answer": "For most startups, Python is the practical choice..."},
+        {"model": "DeepSeek R1", "answer": "A step-by-step strategic analysis of the SaaS opportunity..."},
+        {"model": "Hermes 3 405B", "answer": "The market dynamics for small business analytics suggest..."},
+        {"model": "Qwen3 Coder 480B", "answer": "From a systems perspective, the platform strategy should..."},
+        {"model": "Llama 3.3 70B", "answer": "For a practical launch strategy, focus on validation first..."},
     ],
     "peer_reviews": [
-        {"reviewer": "DeepSeek R1", "review": "Model A was thorough, Model B too vague, Model C had good points."},
-        {"reviewer": "Hermes 3 405B", "review": "Model A nailed the reasoning, Model C was too focused on performance."},
+        {"reviewer": "DeepSeek R1", "review": "Model A had the strongest risk analysis, Model B lacked decision criteria."},
+        {"reviewer": "Hermes 3 405B", "review": "Model A was thorough on phases, Model C drifted into implementation details."},
     ],
     "chairman": "Kimi K2.5 (Chairman)",
     "council": ["DeepSeek R1", "Hermes 3 405B", "Qwen3 Coder 480B", "Llama 3.3 70B"],
@@ -111,9 +174,9 @@ def test_pdf_special_chars_in_question():
     assert os.path.exists(path)
 
 
-def test_pdf_special_chars_in_answer():
-    """Final answer with XML special characters renders cleanly."""
-    data = {**VALID_COUNCIL_JSON, "final_answer": "Use <script> tags & escape them with &amp; entities. Compare x > y."}
+def test_pdf_special_chars_in_summary():
+    """Executive summary with XML special characters renders cleanly."""
+    data = {**VALID_COUNCIL_JSON, "executive_summary": "Use <script> tags & escape them with &amp; entities. Compare x > y."}
     path = generate_pdf(data)
     assert os.path.exists(path)
 
@@ -131,9 +194,9 @@ def test_pdf_special_chars_in_disagreements():
     assert os.path.exists(path)
 
 
-def test_pdf_special_chars_in_consensus():
-    """Consensus points with XML chars don't crash."""
-    data = {**VALID_COUNCIL_JSON, "consensus_points": [
+def test_pdf_special_chars_in_priorities():
+    """Strategic priorities with XML chars don't crash."""
+    data = {**VALID_COUNCIL_JSON, "strategic_priorities": [
         "All agreed: A & B > C",
         "The <framework> approach is best",
     ]}
@@ -166,9 +229,9 @@ def test_pdf_empty_disagreements():
     assert os.path.exists(path)
 
 
-def test_pdf_empty_consensus():
-    """Empty consensus_points array renders without crash."""
-    data = {**VALID_COUNCIL_JSON, "consensus_points": []}
+def test_pdf_empty_priorities():
+    """Empty strategic_priorities array renders without crash."""
+    data = {**VALID_COUNCIL_JSON, "strategic_priorities": []}
     path = generate_pdf(data)
     assert os.path.exists(path)
 
@@ -180,10 +243,10 @@ def test_pdf_empty_individual_answers():
     assert os.path.exists(path)
 
 
-def test_pdf_long_answer():
-    """3000+ word final_answer doesn't crash or exceed memory."""
-    long_text = "This is a very detailed answer. " * 500  # ~3000 words
-    data = {**VALID_COUNCIL_JSON, "final_answer": long_text}
+def test_pdf_long_summary():
+    """3000+ word executive_summary doesn't crash or exceed memory."""
+    long_text = "This is a very detailed strategic analysis. " * 500  # ~3500 words
+    data = {**VALID_COUNCIL_JSON, "executive_summary": long_text}
     path = generate_pdf(data)
     assert os.path.exists(path)
     # Should be a multi-page PDF
@@ -200,17 +263,19 @@ def test_pdf_single_word_question():
 # ── Input Validation Tests ────────────────────────────────────────────────────
 
 def test_validate_input_coerces_types():
-    """Non-list disagreements get coerced to empty list."""
+    """Non-list fields get coerced to empty list."""
     data = {
         "question": "Test?",
         "disagreements": "not a list",
-        "consensus_points": None,
+        "strategic_priorities": None,
+        "deliverables": 123,
         "council": 123,
         "individual_answers": "also not a list",
     }
     cleaned = council_pdf.validate_input(data)
     assert cleaned["disagreements"] == []
-    assert cleaned["consensus_points"] == []
+    assert cleaned["strategic_priorities"] == []
+    assert cleaned["deliverables"] == []
     assert cleaned["council"] == []
     assert cleaned["individual_answers"] == []
 
@@ -219,18 +284,26 @@ def test_validate_input_preserves_valid():
     """Valid data passes through unchanged."""
     cleaned = council_pdf.validate_input(VALID_COUNCIL_JSON)
     assert cleaned["question"] == VALID_COUNCIL_JSON["question"]
-    assert cleaned["final_answer"] == VALID_COUNCIL_JSON["final_answer"]
-    assert len(cleaned["disagreements"]) == 2
-    assert len(cleaned["consensus_points"]) == 3
+    assert cleaned["executive_summary"] == VALID_COUNCIL_JSON["executive_summary"]
+    assert len(cleaned["disagreements"]) == 1
+    assert len(cleaned["strategic_priorities"]) == 3
+    assert len(cleaned["deliverables"]) == 2
+    assert len(cleaned["phases"]) == 2
+    assert len(cleaned["risks"]) == 2
+    assert len(cleaned["moats"]) == 2
 
 
 def test_validate_input_missing_fields():
     """Missing fields get sensible defaults."""
     cleaned = council_pdf.validate_input({})
     assert cleaned["question"] == "Unknown question"
-    assert cleaned["final_answer"] == "No answer provided."
+    assert cleaned["executive_summary"] == "No strategic plan provided."
     assert cleaned["confidence"] == "unknown"
     assert cleaned["chairman"] == "Unknown"
+    assert cleaned["resource_considerations"] == ""
+    assert cleaned["deliverables"] == []
+    assert cleaned["phases"] == []
+    assert cleaned["moats"] == []
 
 
 # ── Filename Tests ────────────────────────────────────────────────────────────
@@ -295,3 +368,79 @@ def test_xml_escape_number():
 def test_xml_escape_preserves_safe():
     """Safe text passes through unchanged."""
     assert council_pdf.xml_escape("Hello world") == "Hello world"
+
+
+# ── New Section Edge Case Tests ──────────────────────────────────────────────
+
+def test_pdf_empty_deliverables():
+    """Empty deliverables array renders without crash."""
+    data = {**VALID_COUNCIL_JSON, "deliverables": []}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_empty_phases():
+    """Empty phases array renders without crash."""
+    data = {**VALID_COUNCIL_JSON, "phases": []}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_empty_risks():
+    """Empty risks array renders without crash."""
+    data = {**VALID_COUNCIL_JSON, "risks": []}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_empty_success_criteria():
+    """Empty success_criteria array renders without crash."""
+    data = {**VALID_COUNCIL_JSON, "success_criteria": []}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_empty_moats():
+    """Empty moats array renders without crash."""
+    data = {**VALID_COUNCIL_JSON, "moats": []}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_special_chars_in_deliverables():
+    """Deliverables with XML chars don't crash."""
+    data = {**VALID_COUNCIL_JSON, "deliverables": [
+        {
+            "name": "MVP for <Product> & Integration",
+            "description": "Build the core features & ensure x < y > z compatibility.",
+            "phase": "Phase 1"
+        }
+    ]}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_special_chars_in_risks():
+    """Risks with XML chars don't crash."""
+    data = {**VALID_COUNCIL_JSON, "risks": [
+        {
+            "risk": "Competitor <X> & partner Y might launch first",
+            "severity": "high",
+            "mitigation": "Monitor competitor <activity> & accelerate timeline."
+        }
+    ]}
+    path = generate_pdf(data)
+    assert os.path.exists(path)
+
+
+def test_pdf_special_chars_in_moats():
+    """Moats with XML chars don't crash."""
+    data = {**VALID_COUNCIL_JSON, "moats": [
+        {
+            "type": "Data & Network <Effect>",
+            "description": "Users generate data that improves the platform & creates > value.",
+            "durability": "Strong — grows with scale & is hard to replicate."
+        }
+    ]}
+    path = generate_pdf(data)
+    assert os.path.exists(path)

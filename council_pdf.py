@@ -56,17 +56,20 @@ def validate_input(data: dict) -> dict:
 
     # String fields: coerce to str with defaults
     _STR_FIELDS = {
-        "question":        "Unknown question",
-        "final_answer":    "No answer provided.",
-        "confidence":      "unknown",
-        "confidence_note": "",
-        "chairman":        "Unknown",
+        "question":                "Unknown question",
+        "executive_summary":       "No strategic plan provided.",
+        "confidence":              "unknown",
+        "confidence_note":         "",
+        "chairman":                "Unknown",
+        "resource_considerations": "",
     }
     for key, default in _STR_FIELDS.items():
         cleaned[key] = str(data.get(key, default))
 
     # List fields: pass through if list, otherwise default to []
-    for key in ("consensus_points", "disagreements", "council", "individual_answers"):
+    for key in ("strategic_priorities", "deliverables", "success_criteria",
+                "phases", "risks", "moats", "go_no_go_criteria",
+                "disagreements", "council", "individual_answers"):
         val = data.get(key, [])
         cleaned[key] = val if isinstance(val, list) else []
 
@@ -108,6 +111,14 @@ CONFIDENCE_COLORS = {
     "low":     RED_SOFT,
     "unknown": SLATE,
 }
+
+SEVERITY_COLORS = {
+    "high":   RED_SOFT,
+    "medium": colors.HexColor("#B7791F"),
+    "low":    GREEN_SOFT,
+}
+
+MOAT_COLOR = colors.HexColor("#553C9A")  # Deep purple for moat badges
 
 # ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -228,6 +239,30 @@ def build_styles():
             textColor=NAVY,
             leading=13,
         ),
+        "decision_point": ParagraphStyle(
+            "decision_point",
+            fontName="Helvetica-Oblique",
+            fontSize=10,
+            textColor=GOLD,
+            leading=14,
+            leftIndent=10,
+            rightIndent=10,
+            spaceAfter=4,
+        ),
+        "table_header": ParagraphStyle(
+            "table_header",
+            fontName="Helvetica-Bold",
+            fontSize=9,
+            textColor=WHITE,
+            leading=12,
+        ),
+        "table_cell": ParagraphStyle(
+            "table_cell",
+            fontName="Helvetica",
+            fontSize=9,
+            textColor=colors.HexColor("#2D3748"),
+            leading=13,
+        ),
     }
     return styles
 
@@ -244,7 +279,7 @@ def make_page_decorator(title: str, generated_at: str):
         canvas.rect(0, h - 36, w, 36, fill=1, stroke=0)
         canvas.setFillColor(GOLD)
         canvas.setFont("Helvetica-Bold", 10)
-        canvas.drawString(0.5 * inch, h - 23, "LLM COUNCIL REPORT")
+        canvas.drawString(0.5 * inch, h - 23, "LLM COUNCIL STRATEGIC PLAN")
         canvas.setFillColor(WHITE)
         canvas.setFont("Helvetica", 9)
         short = title[:50] + ("..." if len(title) > 50 else "")
@@ -339,6 +374,164 @@ def disagreement_card(idx: int, item: dict, styles) -> Table:
     return outer
 
 
+def data_table(headers: list[str], rows: list[list], styles) -> Table:
+    """Render a 3-column table with header row and alternating row backgrounds."""
+    header_row = [Paragraph(f"<b>{xml_escape(h)}</b>", styles["table_header"]) for h in headers]
+    data_rows = []
+    for row in rows:
+        data_rows.append([Paragraph(xml_escape(str(cell)), styles["table_cell"]) for cell in row])
+
+    all_rows = [header_row] + data_rows
+    col_width = 6.7 * inch / len(headers)
+    tbl = Table(all_rows, colWidths=[col_width] * len(headers))
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), NAVY),
+        ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, LIGHT_GRAY]),
+        ("GRID", (0, 0), (-1, -1), 0.5, MID_GRAY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return tbl
+
+
+def phase_card(idx: int, item: dict, styles) -> Table:
+    """Render a phase card with name, duration, objectives, and decision point."""
+    name     = xml_escape(str(item.get("name", f"Phase {idx}")))
+    duration = xml_escape(str(item.get("duration", "")))
+    objectives = item.get("objectives", [])
+    if not isinstance(objectives, list):
+        objectives = []
+    decision = xml_escape(str(item.get("decision_point", "")))
+
+    header_text = f"<b>{name}</b>"
+    if duration:
+        header_text += f"  —  {duration}"
+    header = Paragraph(header_text, styles["dhead"])
+
+    inner_rows = []
+    for obj in objectives:
+        inner_rows.append([Paragraph(f"• {xml_escape(str(obj))}", styles["body"])])
+
+    if decision:
+        inner_rows.append([Paragraph("<b>Decision Gate:</b>", styles["label"])])
+        inner_rows.append([Paragraph(decision, styles["decision_point"])])
+
+    if not inner_rows:
+        inner_rows.append([Paragraph("No objectives specified.", styles["body_small"])])
+
+    inner = Table(inner_rows, colWidths=[6.5 * inch])
+    inner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GRAY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+
+    outer = Table([[header], [inner]], colWidths=[6.5 * inch])
+    outer.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), NAVY),
+        ("LEFTPADDING", (0, 0), (-1, 0), 10),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("LEFTPADDING", (0, 1), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 1), (-1, -1), 0),
+        ("TOPPADDING", (0, 1), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 0),
+        ("BOX", (0, 0), (-1, -1), 1, MID_GRAY),
+    ]))
+    return outer
+
+
+def risk_card(idx: int, item: dict, styles) -> Table:
+    """Render a risk card with severity badge, description, and mitigation."""
+    risk_text  = xml_escape(str(item.get("risk", f"Risk {idx}")))
+    severity   = str(item.get("severity", "medium")).lower()
+    mitigation = xml_escape(str(item.get("mitigation", "")))
+
+    sev_color = SEVERITY_COLORS.get(severity, SLATE)
+    header = Paragraph(
+        f"<b>{severity.upper()} RISK:</b>  {risk_text}",
+        styles["dhead"],
+    )
+
+    inner_rows = []
+    if mitigation:
+        inner_rows.append([Paragraph("<b>Mitigation:</b>", styles["label"])])
+        inner_rows.append([Paragraph(mitigation, styles["body"])])
+    else:
+        inner_rows.append([Paragraph("No mitigation specified.", styles["body_small"])])
+
+    inner = Table(inner_rows, colWidths=[6.5 * inch])
+    inner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GRAY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+
+    outer = Table([[header], [inner]], colWidths=[6.5 * inch])
+    outer.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), sev_color),
+        ("LEFTPADDING", (0, 0), (-1, 0), 10),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("LEFTPADDING", (0, 1), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 1), (-1, -1), 0),
+        ("TOPPADDING", (0, 1), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 0),
+        ("BOX", (0, 0), (-1, -1), 1, MID_GRAY),
+    ]))
+    return outer
+
+
+def moat_card(idx: int, item: dict, styles) -> Table:
+    """Render a moat card with type badge, description, and durability."""
+    moat_type   = xml_escape(str(item.get("type", f"Moat {idx}")))
+    description = xml_escape(str(item.get("description", "")))
+    durability  = xml_escape(str(item.get("durability", "")))
+
+    header = Paragraph(f"<b>{moat_type}</b>", styles["dhead"])
+
+    inner_rows = []
+    if description:
+        inner_rows.append([Paragraph(description, styles["body"])])
+    if durability:
+        inner_rows.append([Paragraph("<b>Durability:</b>", styles["label"])])
+        inner_rows.append([Paragraph(durability, styles["verdict"])])
+
+    if not inner_rows:
+        inner_rows.append([Paragraph("No details specified.", styles["body_small"])])
+
+    inner = Table(inner_rows, colWidths=[6.5 * inch])
+    inner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GRAY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+
+    outer = Table([[header], [inner]], colWidths=[6.5 * inch])
+    outer.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), MOAT_COLOR),
+        ("LEFTPADDING", (0, 0), (-1, 0), 10),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("LEFTPADDING", (0, 1), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 1), (-1, -1), 0),
+        ("TOPPADDING", (0, 1), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 0),
+        ("BOX", (0, 0), (-1, -1), 1, MID_GRAY),
+    ]))
+    return outer
+
+
 def council_table(council: list, chairman: str, styles) -> Table:
     rows = [
         [
@@ -395,7 +588,7 @@ def build_pdf(data: dict, output_path: str):
     # ── Cover block ────────────────────────────────────────────────────────────
     cover = Table(
         [[Paragraph("LLM COUNCIL", styles["cover_title"])],
-         [Paragraph("Deliberation Report", styles["cover_sub"])],
+         [Paragraph("Strategic Planning Report", styles["cover_sub"])],
          [Spacer(1, 6)],
          [Paragraph(f"Generated: {now}", styles["cover_sub"])]],
         colWidths=[6.7 * inch],
@@ -412,8 +605,8 @@ def build_pdf(data: dict, output_path: str):
     story.append(cover)
     story.append(Spacer(1, 14))
 
-    # ── Question ───────────────────────────────────────────────────────────────
-    section_divider(story, styles, "Question")
+    # ── Initiative ─────────────────────────────────────────────────────────────
+    section_divider(story, styles, "Initiative")
     q_box = Table(
         [[Paragraph(xml_escape(question), styles["question_text"])]],
         colWidths=[6.7 * inch],
@@ -435,26 +628,111 @@ def build_pdf(data: dict, output_path: str):
     story.append(confidence_badge(confidence, conf_note, styles))
     story.append(Spacer(1, 14))
 
-    # ── Final Answer ───────────────────────────────────────────────────────────
-    section_divider(story, styles, "Chairman's Final Answer")
-    render_paragraphs(story, xml_escape(data["final_answer"]), styles["body"])
+    # ── Executive Summary ────────────────────────────────────────────────────
+    section_divider(story, styles, "Executive Summary")
+    render_paragraphs(story, xml_escape(data["executive_summary"]), styles["body"])
 
     story.append(Spacer(1, 10))
 
-    # ── Consensus Points ──────────────────────────────────────────────────────
-    consensus = data["consensus_points"]
-    if consensus:
-        section_divider(story, styles, "Where All Models Agreed")
-        for point in consensus:
+    # ── Strategic Priorities ──────────────────────────────────────────────────
+    priorities = data["strategic_priorities"]
+    if priorities:
+        section_divider(story, styles, "Strategic Priorities")
+        for point in priorities:
             story.append(Paragraph(f"- {xml_escape(str(point))}", styles["consensus_item"]))
         story.append(Spacer(1, 10))
 
-    # ── Disagreements ─────────────────────────────────────────────────────────
+    # ── Deliverables ──────────────────────────────────────────────────────────
+    deliverables = data["deliverables"]
+    if deliverables:
+        section_divider(story, styles, "Deliverables")
+        rows = []
+        for d in deliverables:
+            if isinstance(d, dict):
+                rows.append([
+                    d.get("name", ""),
+                    d.get("description", ""),
+                    d.get("phase", ""),
+                ])
+        if rows:
+            story.append(data_table(["Deliverable", "Description", "Phase"], rows, styles))
+            story.append(Spacer(1, 10))
+
+    # ── Phases & Timeline ─────────────────────────────────────────────────────
+    phases = data["phases"]
+    if phases:
+        section_divider(story, styles, "Phases & Timeline")
+        story.append(Paragraph(
+            "Each phase includes objectives and a decision gate that must be met to proceed.",
+            styles["body_small"],
+        ))
+        story.append(Spacer(1, 8))
+        for i, item in enumerate(phases, 1):
+            if isinstance(item, dict):
+                story.append(phase_card(i, item, styles))
+                story.append(Spacer(1, 8))
+
+    # ── Success Criteria ──────────────────────────────────────────────────────
+    criteria = data["success_criteria"]
+    if criteria:
+        section_divider(story, styles, "Success Criteria")
+        rows = []
+        for c in criteria:
+            if isinstance(c, dict):
+                rows.append([
+                    c.get("metric", ""),
+                    c.get("target", ""),
+                    c.get("rationale", ""),
+                ])
+        if rows:
+            story.append(data_table(["Metric", "Target", "Rationale"], rows, styles))
+            story.append(Spacer(1, 10))
+
+    # ── Risk Assessment ───────────────────────────────────────────────────────
+    risks = data["risks"]
+    if risks:
+        section_divider(story, styles, "Risk Assessment")
+        story.append(Spacer(1, 8))
+        for i, item in enumerate(risks, 1):
+            if isinstance(item, dict):
+                story.append(risk_card(i, item, styles))
+                story.append(Spacer(1, 8))
+
+    # ── Strategic Moats ───────────────────────────────────────────────────────
+    moats = data["moats"]
+    if moats:
+        section_divider(story, styles, "Strategic Moats")
+        story.append(Paragraph(
+            "Defensible strategic advantages that create long-term competitive barriers.",
+            styles["body_small"],
+        ))
+        story.append(Spacer(1, 8))
+        for i, item in enumerate(moats, 1):
+            if isinstance(item, dict):
+                story.append(moat_card(i, item, styles))
+                story.append(Spacer(1, 8))
+
+    # ── Resource Considerations ───────────────────────────────────────────────
+    resources = data["resource_considerations"]
+    if resources:
+        section_divider(story, styles, "Resource Considerations")
+        render_paragraphs(story, xml_escape(resources), styles["body"])
+        story.append(Spacer(1, 10))
+
+    # ── Go/No-Go Criteria ─────────────────────────────────────────────────────
+    go_no_go = data["go_no_go_criteria"]
+    if go_no_go:
+        section_divider(story, styles, "Go/No-Go Criteria")
+        for criterion in go_no_go:
+            story.append(Paragraph(f"- {xml_escape(str(criterion))}", styles["consensus_item"]))
+        story.append(Spacer(1, 10))
+
+    # ── Strategic Disagreements ───────────────────────────────────────────────
     disagreements = data["disagreements"]
     if disagreements:
-        section_divider(story, styles, "Where They Disagreed")
+        section_divider(story, styles, "Strategic Disagreements")
         story.append(Paragraph(
-            "These are the significant points of divergence across the council, with the Chairman's verdict on each.",
+            "Significant strategic divergences across the council, with the Chairman's verdict on each.",
             styles["body_small"],
         ))
         story.append(Spacer(1, 8))
@@ -474,9 +752,9 @@ def build_pdf(data: dict, output_path: str):
     individual = data["individual_answers"]
     if individual:
         story.append(PageBreak())
-        section_divider(story, styles, "Appendix — Individual Model Answers")
+        section_divider(story, styles, "Appendix — Individual Strategic Plans")
         story.append(Paragraph(
-            "Raw answers from each councilor before cross-review and synthesis.",
+            "Raw strategic plans from each advisor before cross-review and synthesis.",
             styles["body_small"],
         ))
         story.append(Spacer(1, 10))
