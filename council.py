@@ -30,9 +30,9 @@ COUNCILORS = [
 ]
 
 CHAIRMAN = {
-    "id": "gpt-4o",
-    "model": "openai/gpt-4o",
-    "label": "GPT-4o (Chairman)",
+    "id": "kimi-k2.5",
+    "model": "moonshotai/kimi-k2.5:free",
+    "label": "Kimi K2.5 (Chairman)",
 }
 
 REQUEST_TIMEOUT = 120  # seconds per call

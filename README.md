@@ -1,6 +1,6 @@
 # Council of Reeds
 
-**A multi-LLM deliberation engine.** Ask a question, get answers from 4 AI models with different cognitive strengths, have them anonymously review each other, then a GPT-4o Chairman synthesizes the best final answer with a full disagreement breakdown.
+**A multi-LLM deliberation engine.** Ask a question, get answers from 4 AI models with different cognitive strengths, have them anonymously review each other, then a Kimi K2.5 Chairman synthesizes the best final answer with a full disagreement breakdown. **100% free.**
 
 Inspired by [karpathy/llm-council](https://github.com/karpathy/llm-council). Rebuilt as a deployable tool with error handling, retry logic, and PDF report generation.
 
@@ -18,7 +18,7 @@ Stage 1 — Four models answer independently (parallel)
 Stage 2 — Each model reviews the others anonymously (Model A/B/C)
      |
      v
-Stage 3 — GPT-4o Chairman synthesizes everything into a final answer
+Stage 3 — Kimi K2.5 Chairman synthesizes everything into a final answer
      |
      v
 Structured JSON + styled PDF report
@@ -28,7 +28,7 @@ Structured JSON + styled PDF report
 
 **Stage 2** gives each model the other three answers, shuffled and anonymized. They rank them, identify contradictions, and call out what each got right or missed. This surfaces disagreements the Chairman needs to adjudicate.
 
-**Stage 3** sends everything to GPT-4o — all answers with real names, plus all anonymous reviews. It synthesizes a definitive answer, lists where the models agreed, and breaks down every disagreement with a verdict.
+**Stage 3** sends everything to Kimi K2.5 — a trillion-parameter MoE model that matches GPT-5.2 and Claude Opus 4.5 on benchmarks. It gets all answers with real names, plus all anonymous reviews. It synthesizes a definitive answer, lists where the models agreed, and breaks down every disagreement with a verdict.
 
 ## The Council
 
@@ -38,15 +38,15 @@ Structured JSON + styled PDF report
 | Councilor | Hermes 3 405B | **Knowledge** — 405B params, deep and nuanced |
 | Councilor | Qwen3 Coder 480B | **Structuralist** — systems thinking, engineering angle |
 | Councilor | Llama 3.3 70B | **Generalist** — practical, mainstream perspective |
-| Chairman | GPT-4o | **Synthesizer** — reliable structured output |
+| Chairman | Kimi K2.5 | **Synthesizer** — trillion-param MoE, top-tier benchmarks |
 
-Councilors are free via OpenRouter. Chairman is paid (~$0.02/query).
+All models are free via OpenRouter. **$0.00/query.**
 
 ## Quick Start
 
 ```bash
-# 1. Get an OpenRouter API key (free tier works for councilors)
-#    https://openrouter.ai — add credits for GPT-4o Chairman
+# 1. Get an OpenRouter API key (free tier — all models are free)
+#    https://openrouter.ai
 
 # 2. Set your key
 export OPENROUTER_API_KEY=sk-or-v1-...
@@ -116,10 +116,10 @@ See `setup.sh --update` to update an existing installation.
 | Component | Cost |
 |-----------|------|
 | 4 councilor calls | Free (OpenRouter free tier) |
-| 1 Chairman call (GPT-4o) | ~$0.02 |
-| **Total per query** | **~$0.02** |
+| 1 Chairman call (Kimi K2.5) | Free (OpenRouter free tier) |
+| **Total per query** | **$0.00** |
 
-Free tier allows ~25 council queries/day (50 in fast mode).
+Free tier allows ~22 council queries/day (40 in fast mode).
 
 ## Testing
 

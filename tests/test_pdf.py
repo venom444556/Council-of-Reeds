@@ -48,7 +48,7 @@ VALID_COUNCIL_JSON = {
         {"reviewer": "DeepSeek R1", "review": "Model A was thorough, Model B too vague, Model C had good points."},
         {"reviewer": "Hermes 3 405B", "review": "Model A nailed the reasoning, Model C was too focused on performance."},
     ],
-    "chairman": "GPT-4o (Chairman)",
+    "chairman": "Kimi K2.5 (Chairman)",
     "council": ["DeepSeek R1", "Hermes 3 405B", "Qwen3 Coder 480B", "Llama 3.3 70B"],
     "stage2_skipped": False,
     "run_started_at": "2026-02-18T12:00:00+00:00",

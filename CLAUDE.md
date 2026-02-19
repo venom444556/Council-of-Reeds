@@ -3,9 +3,9 @@
 ## What This Project Is
 
 A multi-LLM deliberation skill for OpenClaw. Fires a question to 4 free models
-via OpenRouter in parallel, runs anonymous cross-review, then a paid GPT-4o
-Chairman synthesizes a final answer + disagreement breakdown. Output: chat
-summary + PDF report.
+via OpenRouter in parallel, runs anonymous cross-review, then a Kimi K2.5
+Chairman synthesizes a final answer + disagreement breakdown. 100% free.
+Output: chat summary + PDF report.
 
 Triggered via `/council [question]` from Telegram, WhatsApp, Discord, or any
 OpenClaw-connected chat app.
@@ -65,7 +65,7 @@ User message (/council question)
         |   Order shuffled per-reviewer to prevent position bias
         |   (Skipped with --fast flag)
         |
-        +-- Stage 3: Chairman call (GPT-4o, paid)
+        +-- Stage 3: Chairman call (Kimi K2.5, free)
             Gets all answers + reviews, returns structured JSON:
             { final_answer, disagreements[], consensus_points[],
               confidence, confidence_note }
@@ -87,22 +87,22 @@ User message (/council question)
 | Councilor | Hermes 3 405B                              | nousresearch/hermes-3-llama-3.1-405b:free      | Knowledge        |
 | Councilor | Qwen3 Coder 480B                           | qwen/qwen3-coder:free                          | Structuralist    |
 | Councilor | Llama 3.3 70B                              | meta-llama/llama-3.3-70b-instruct:free         | Generalist       |
-| Chairman  | GPT-4o                                     | openai/gpt-4o                                  | Synthesizer      |
+| Chairman  | Kimi K2.5                                  | moonshotai/kimi-k2.5:free                      | Synthesizer      |
 
-**Councilors are free. Chairman is paid (~$0.02/query).**
+**All models are free. $0.00/query.**
 
 ## API
 
 All calls go to `https://openrouter.ai/api/v1/chat/completions`.
 OpenAI-compatible. Auth: `Authorization: Bearer $OPENROUTER_API_KEY`.
 Free tier limits (councilors): 200 req/day, 20 req/min.
-Chairman (GPT-4o): rate limited by OpenRouter account credits.
-Each `/council` run = ~9 API calls (5 in --fast mode).
+Chairman (Kimi K2.5): same free tier limits.
+Each `/council` run = 9 free API calls (5 in --fast mode).
 
 ## Hard Constraints
 
-- **Free councilors only** — no paid model IDs for councilors
-- **Paid Chairman** — GPT-4o for reliable synthesis + JSON output
+- **Free models only** — all councilors and Chairman use OpenRouter free tier
+- **Kimi K2.5 Chairman** — trillion-param MoE for reliable synthesis + JSON output
 - **Python only** — no new infrastructure (no Redis, no DB, no message queues)
 - **ReportLab only** — do not switch PDF libraries (no weasyprint, no pypdf for generation)
 - **Single-file PDF output** — no external assets, fonts, or images
