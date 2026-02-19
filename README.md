@@ -1,87 +1,153 @@
-# LLM Council
+# Council of Reeds
 
-![llmcouncil](header.jpg)
+**A multi-LLM deliberation engine.** Ask a question, get answers from 4 AI models with different cognitive strengths, have them anonymously review each other, then a GPT-4o Chairman synthesizes the best final answer with a full disagreement breakdown.
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+Inspired by [karpathy/llm-council](https://github.com/karpathy/llm-council). Rebuilt as a deployable tool with error handling, retry logic, and PDF report generation.
 
-In a bit more detail, here is what happens when you submit a query:
+---
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+## How It Works
 
-## Vibe Code Alert
+```
+Your question
+     |
+     v
+Stage 1 — Four models answer independently (parallel)
+     |
+     v
+Stage 2 — Each model reviews the others anonymously (Model A/B/C)
+     |
+     v
+Stage 3 — GPT-4o Chairman synthesizes everything into a final answer
+     |
+     v
+Structured JSON + styled PDF report
+```
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+**Stage 1** fires your question to 4 free models simultaneously. Each brings a different cognitive lens — a chain-of-thought reasoner, a deep knowledge model, a structured/systems thinker, and a practical generalist.
 
-## Setup
+**Stage 2** gives each model the other three answers, shuffled and anonymized. They rank them, identify contradictions, and call out what each got right or missed. This surfaces disagreements the Chairman needs to adjudicate.
 
-### 1. Install Dependencies
+**Stage 3** sends everything to GPT-4o — all answers with real names, plus all anonymous reviews. It synthesizes a definitive answer, lists where the models agreed, and breaks down every disagreement with a verdict.
 
-The project uses [uv](https://docs.astral.sh/uv/) for project management.
+## The Council
 
-**Backend:**
+| Role | Model | Cognitive Strength |
+|------|-------|--------------------|
+| Councilor | DeepSeek R1 | **Reasoner** — chain-of-thought, step-by-step logic |
+| Councilor | Hermes 3 405B | **Knowledge** — 405B params, deep and nuanced |
+| Councilor | Qwen3 Coder 480B | **Structuralist** — systems thinking, engineering angle |
+| Councilor | Llama 3.3 70B | **Generalist** — practical, mainstream perspective |
+| Chairman | GPT-4o | **Synthesizer** — reliable structured output |
+
+Councilors are free via OpenRouter. Chairman is paid (~$0.02/query).
+
+## Quick Start
+
 ```bash
-uv sync
+# 1. Get an OpenRouter API key (free tier works for councilors)
+#    https://openrouter.ai — add credits for GPT-4o Chairman
+
+# 2. Set your key
+export OPENROUTER_API_KEY=sk-or-v1-...
+
+# 3. Install dependencies
+pip install httpx reportlab
+
+# 4. Run a council
+python3 council.py "Should I build my startup in Go or Python?"
+
+# 5. Generate a PDF report
+python3 council.py "Should I build my startup in Go or Python?" | \
+  python3 council_pdf.py --output report.pdf
 ```
 
-**Frontend:**
+### Fast Mode
+
+Skip Stage 2 (cross-review) for faster results. 5 API calls instead of 9.
+
 ```bash
-cd frontend
-npm install
-cd ..
+python3 council.py --fast "Quick take on Postgres vs MongoDB?" | \
+  python3 council_pdf.py --output report.pdf
 ```
 
-### 2. Configure API Key
+## Output
 
-Create a `.env` file in the project root:
+The council returns structured JSON:
+
+```json
+{
+  "question": "Should I build my startup in Go or Python?",
+  "final_answer": "Python for most startups. Here's why...",
+  "disagreements": [
+    {
+      "topic": "Performance at scale",
+      "summary": "Qwen3 argued Go's concurrency matters early...",
+      "chairman_verdict": "At startup scale, dev speed beats runtime speed."
+    }
+  ],
+  "consensus_points": [
+    "Both are production-ready",
+    "Team expertise should be a major factor"
+  ],
+  "confidence": "high",
+  "confidence_note": "Strong alignment across all councilors."
+}
+```
+
+The PDF report includes a cover page, confidence badge, the synthesized answer, disagreement cards with Chairman verdicts, council composition table, and an appendix with every raw model answer.
+
+## Deploy with OpenClaw
+
+Council of Reeds is built as an [OpenClaw](https://openclaw.ai) skill. One-click deploy to a server, then trigger from Telegram, WhatsApp, or Discord:
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-...
+# One-click deploy
+chmod +x setup.sh && ./setup.sh
+
+# Then from your chat app:
+/council Should we pivot from B2B to B2C?
 ```
 
-Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
+See `setup.sh --update` to update an existing installation.
 
-### 3. Configure Models (Optional)
+## Cost
 
-Edit `backend/config.py` to customize the council:
+| Component | Cost |
+|-----------|------|
+| 4 councilor calls | Free (OpenRouter free tier) |
+| 1 Chairman call (GPT-4o) | ~$0.02 |
+| **Total per query** | **~$0.02** |
 
-```python
-COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
-]
+Free tier allows ~25 council queries/day (50 in fast mode).
 
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
-```
+## Testing
 
-## Running the Application
-
-**Option 1: Use the start script**
 ```bash
-./start.sh
+pip install pytest pytest-asyncio respx
+pytest tests/ -v --asyncio-mode=auto
 ```
 
-**Option 2: Run manually**
+Tests mock all OpenRouter calls — no API key needed, no real requests made.
 
-Terminal 1 (Backend):
-```bash
-uv run python -m backend.main
+## Project Structure
+
+```
+council.py           3-stage async pipeline
+council_pdf.py       ReportLab PDF renderer
+SKILL.md             OpenClaw skill definition
+Dockerfile           Docker image (extends openclaw/openclaw:latest)
+docker-compose.yml   Service composition
+setup.sh             One-click server deploy
+tests/
+  test_council.py    Pipeline tests (13 tests)
+  test_pdf.py        PDF renderer tests (20 tests)
 ```
 
-Terminal 2 (Frontend):
-```bash
-cd frontend
-npm run dev
-```
+## Credits
 
-Then open http://localhost:5173 in your browser.
+Inspired by [karpathy/llm-council](https://github.com/karpathy/llm-council) — a Saturday hack by Andrej Karpathy that demonstrated the multi-model deliberation concept. We took the idea and rebuilt it as a deployable, production-hardened tool with free model accessibility, error resilience, and PDF reporting.
 
-## Tech Stack
+## License
 
-- **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
-- **Frontend:** React + Vite, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/`
-- **Package Management:** uv for Python, npm for JavaScript
+MIT
