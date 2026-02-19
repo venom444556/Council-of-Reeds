@@ -235,7 +235,7 @@ async def test_full_pipeline_mock():
         call_count += 1
         body = json.loads(request.content)
 
-        # Chairman call (last one, uses GPT-4o)
+        # Chairman call (last one, uses Kimi K2.5)
         if body["model"] == council.CHAIRMAN["model"]:
             return httpx.Response(200, json=mock_openrouter_success(MOCK_CHAIRMAN_JSON))
         # All other calls (councilors)

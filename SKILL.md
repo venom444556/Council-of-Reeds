@@ -1,6 +1,6 @@
 ---
 name: council
-description: Runs your question through a multi-LLM council. 4 free models answer independently, review each other anonymously, then a GPT-4o Chairman synthesizes the best final answer with a disagreement breakdown. Trigger with /council [your question].
+description: Runs your question through a multi-LLM council. 4 free models answer independently, review each other anonymously, then a Kimi K2.5 Chairman synthesizes the best final answer with a disagreement breakdown. 100% free. Trigger with /council [your question].
 metadata: {"openclaw":{"emoji":"⚖️","requires":{"env":["OPENROUTER_API_KEY"]},"primaryEnv":"OPENROUTER_API_KEY"}}
 user-invocable: true
 ---
@@ -15,7 +15,7 @@ Runs a 3-stage deliberation across 5 models via OpenRouter:
 
 1. **Stage 1 – First Opinions**: 4 free councilor models answer the question independently and in parallel
 2. **Stage 2 – Anonymous Cross-Review**: Each model reviews the other answers (anonymized as Model A/B/C) and ranks them
-3. **Stage 3 – Chairman Synthesis**: GPT-4o (paid) reads all answers + reviews and produces a final synthesized response plus a disagreement breakdown
+3. **Stage 3 – Chairman Synthesis**: Kimi K2.5 (free) reads all answers + reviews and produces a final synthesized response plus a disagreement breakdown
 
 ## How to Invoke
 
@@ -74,20 +74,20 @@ If the user says "quick" or "fast", use `--fast` to skip Stage 2.
 | Councilor 2 | nousresearch/hermes-3-llama-3.1-405b:free | Knowledge (405B deep knowledge) |
 | Councilor 3 | qwen/qwen3-coder:free | Structuralist (systems thinking) |
 | Councilor 4 | meta-llama/llama-3.3-70b-instruct:free | Generalist (practical advice) |
-| Chairman | openai/gpt-4o | Synthesizer (paid, ~$0.02/query) |
+| Chairman | moonshotai/kimi-k2.5:free | Synthesizer (free, trillion-param MoE) |
 
 ## Cost
 
 - Councilor calls: Free (OpenRouter free tier)
-- Chairman call: ~$0.02 per query (GPT-4o via OpenRouter)
-- Total per /council run: ~$0.02
+- Chairman call: Free (Kimi K2.5 via OpenRouter free tier)
+- Total per /council run: **$0.00**
 
 ## Rate Limits
 
-Free tier (councilors): 200 requests/day, 20/min.
-Each council run uses 8 free calls (4 answers + 4 reviews) + 1 paid Chairman call.
-That's ~25 council queries/day on the free tier.
-Fast mode: 4 free calls + 1 paid = 5 total (~50 queries/day on free tier).
+Free tier: 200 requests/day, 20/min.
+Each council run uses 9 free calls (4 answers + 4 reviews + 1 chairman).
+That's ~22 council queries/day on the free tier.
+Fast mode: 5 free calls total (~40 queries/day on free tier).
 
 ## Config (openclaw.json)
 

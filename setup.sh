@@ -40,7 +40,7 @@ ${BOLD}${BLUE}
   LLM Council — OpenClaw One-Click Deploy
 ${NC}
   Multi-model AI deliberation on your own server.
-  Free councilors + GPT-4o Chairman. ~\$0.02/query.
+  5 free models including Kimi K2.5 Chairman. \$0.00/query.
 "
 fi
 
@@ -119,7 +119,7 @@ header "Configuration"
 # OpenRouter API key
 if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
     echo -e "${YELLOW}Get a key at https://openrouter.ai${NC}"
-    echo -e "${YELLOW}Free tier for councilors, paid credits needed for GPT-4o Chairman (~\$0.02/query)${NC}"
+    echo -e "${YELLOW}Free tier — all models including Kimi K2.5 Chairman are free (\$0.00/query)${NC}"
     read -rp "  OpenRouter API key (sk-or-v1-...): " OPENROUTER_API_KEY
     [[ -z "$OPENROUTER_API_KEY" ]] && error "OpenRouter key required."
 fi
@@ -326,9 +326,9 @@ ${NC}
     ./setup.sh --update                                              # Update
 
   ${BOLD}Cost:${NC}
-    Councilors: Free (200 req/day on OpenRouter free tier)
-    Chairman (GPT-4o): ~\$0.02/query
-    ~22 council queries/day on free councilor limit
+    All models free (200 req/day on OpenRouter free tier)
+    Chairman (Kimi K2.5): Free
+    ~22 council queries/day on free tier (~40 in fast mode)
 
   ${BOLD}Upgrade:${NC} Add credits at https://openrouter.ai for higher rate limits
 "

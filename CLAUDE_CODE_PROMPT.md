@@ -4,9 +4,9 @@
 
 A multi-LLM deliberation skill for OpenClaw. Users trigger `/council [question]`
 from Telegram/WhatsApp/Discord. The skill fires the question to 4 free models in
-parallel via OpenRouter, runs anonymous cross-review between them, then a GPT-4o
-Chairman synthesizes a final answer + disagreement breakdown. Output is delivered
-in chat AND as a formatted PDF report.
+parallel via OpenRouter, runs anonymous cross-review between them, then a Kimi K2.5
+Chairman synthesizes a final answer + disagreement breakdown. 100% free. Output is
+delivered in chat AND as a formatted PDF report.
 
 ## File Structure
 
@@ -34,9 +34,9 @@ council/
 | Councilor  | nousresearch/hermes-3-llama-3.1-405b:free      | Knowledge     |
 | Councilor  | qwen/qwen3-coder:free                          | Structuralist |
 | Councilor  | meta-llama/llama-3.3-70b-instruct:free         | Generalist    |
-| Chairman   | openai/gpt-4o (paid)                           | Synthesizer   |
+| Chairman   | moonshotai/kimi-k2.5:free                      | Synthesizer   |
 
-All councilor calls go through OpenRouter free tier. Chairman call is paid (~$0.02/query).
+All calls go through OpenRouter free tier. $0.00/query.
 
 ## Environment
 
@@ -49,7 +49,7 @@ All councilor calls go through OpenRouter free tier. Chairman call is paid (~$0.
 ## Key Constraints
 
 - **Councilors must be free** (`:free` suffix on OpenRouter). Do not swap to paid models.
-- **Chairman is paid** (GPT-4o). Do not downgrade to a free model.
+- **Chairman is Kimi K2.5** (free, trillion-param MoE). Do not downgrade to a weaker model.
 - **No new infrastructure dependencies** — keep it Python-only, no Redis, no DB.
 - **PDF must be self-contained** — single file output, no external assets.
 - **OpenClaw skill format** — SKILL.md must stay AgentSkills-compatible with

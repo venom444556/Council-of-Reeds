@@ -20,14 +20,18 @@ Designed for personal use first, share to ClawHub if it provides value.
 Single API key, single endpoint, unified billing. Free models across providers
 without managing 4+ API keys. Simplifies the Docker setup significantly.
 
-### Why free councilors + paid Chairman?
-Councilors provide diversity of thought at zero cost. The Chairman (GPT-4o) is
-the bottleneck — it synthesizes 8+ inputs into structured JSON, which needs the
-most capability. One paid call at ~$0.02/query is worth it for reliable synthesis.
+### Why free councilors + free Chairman?
+Originally the Chairman was paid (GPT-4o at ~$0.02/query) because synthesis
+needs the most capability. When OpenClaw made Kimi K2.5 free on OpenRouter,
+the calculus changed — Kimi K2.5 is a trillion-parameter MoE model that matches
+GPT-5.2 and Claude Opus 4.5 on benchmarks (50.2% HLE, top agent scores). It
+outclasses GPT-4o by a wide margin and it's free. Entire pipeline is now $0.00.
 
-### Why GPT-4o as Chairman?
-Strong at structured JSON output (critical for the Chairman role). Fast, reliable,
-well-priced. Selected over Claude Sonnet to avoid self-selection bias.
+### Why Kimi K2.5 as Chairman?
+Trillion-param MoE (32B active), matches frontier paid models on benchmarks.
+Strong at structured JSON output. Free on OpenRouter. Replaced GPT-4o when
+OpenClaw made it available at no cost. Previous choice of GPT-4o was driven by
+"paid = reliable" assumption; Kimi K2.5 invalidates that trade-off.
 
 ### Why these 4 councilors?
 Selected for cognitive diversity — different reasoning patterns, not just different
@@ -46,8 +50,8 @@ Diversity of cognitive approach > diversity of company origin.
 ### Why NOT Perplexity Sonar Pro as Chairman?
 Investigated this. The Perplexity API only exposes the Sonar family (Llama-based
 with web search). It does NOT expose GPT, Claude, Gemini, or Grok through the API
-— that's only available in the consumer Perplexity Pro UI. GPT-4o is a better
-Chairman at ~$0.02/query.
+— that's only available in the consumer Perplexity Pro UI. Kimi K2.5 is better
+and free.
 
 ### Why ReportLab for PDF?
 Official skill docs recommended it. Single dependency, no system packages needed,
@@ -105,7 +109,7 @@ automatically.
 - ReportLab as the PDF library
 - SKILL.md frontmatter format (AgentSkills spec)
 - The pipe architecture between the two scripts
-- GPT-4o as Chairman (user's explicit choice)
+- Kimi K2.5 as Chairman (upgraded from GPT-4o when it went free)
 
 ### Could improve
 - Markdown-to-ReportLab rendering (currently `split("\n\n")` loses bullet lists, code blocks)
@@ -117,10 +121,10 @@ automatically.
 ## Rate Limit Math
 
 Free tier (councilors): 200 req/day, 20 req/min
-Per council run: 4 (answers) + 4 (reviews) + 1 (chairman) = 9 requests (8 free + 1 paid)
-Queries per day: floor(200 / 8) = 25 (limited by free councilor calls)
-Fast mode: 4 (answers) + 1 (chairman) = 5 requests (4 free + 1 paid)
-Fast mode queries per day: floor(200 / 4) = 50
+Per council run: 4 (answers) + 4 (reviews) + 1 (chairman) = 9 free requests
+Queries per day: floor(200 / 9) = 22 (limited by free tier daily cap)
+Fast mode: 4 (answers) + 1 (chairman) = 5 free requests
+Fast mode queries per day: floor(200 / 5) = 40
 Safe burst: 2 council queries per minute (16 free req/min, under the 20/min cap)
 
 ---
@@ -136,7 +140,7 @@ Safe burst: 2 council queries per minute (16 free req/min, under the 20/min cap)
 | PDF filename is timestamp-only | Added slugify() for `council_{ts}_{slug}.pdf` |
 | No test coverage | Full test suite in tests/ |
 | Councilor lineup lacked cognitive diversity | Replaced with role-based selection (reasoner, knowledge, structuralist, generalist) |
-| Chairman was free DeepSeek V3 | Upgraded to paid GPT-4o for reliable synthesis |
+| Chairman was free DeepSeek V3 | Upgraded to GPT-4o, then to free Kimi K2.5 |
 | setup.sh didn't validate API key | Added `sk-or-v1-` prefix validation |
 | setup.sh skipped existing openclaw.json | Now merges council skill into existing config |
 | setup.sh had no update mode | Added `--update` flag |
