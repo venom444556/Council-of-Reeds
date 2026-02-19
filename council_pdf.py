@@ -53,24 +53,22 @@ def validate_input(data: dict) -> dict:
         sys.exit(1)
 
     cleaned = {}
-    cleaned["question"] = str(data.get("question", "Unknown question"))
-    cleaned["final_answer"] = str(data.get("final_answer", "No answer provided."))
-    cleaned["confidence"] = str(data.get("confidence", "unknown"))
-    cleaned["confidence_note"] = str(data.get("confidence_note", ""))
-    cleaned["chairman"] = str(data.get("chairman", "Unknown"))
 
-    # Coerce lists
-    consensus = data.get("consensus_points", [])
-    cleaned["consensus_points"] = consensus if isinstance(consensus, list) else []
+    # String fields: coerce to str with defaults
+    _STR_FIELDS = {
+        "question":        "Unknown question",
+        "final_answer":    "No answer provided.",
+        "confidence":      "unknown",
+        "confidence_note": "",
+        "chairman":        "Unknown",
+    }
+    for key, default in _STR_FIELDS.items():
+        cleaned[key] = str(data.get(key, default))
 
-    disagreements = data.get("disagreements", [])
-    cleaned["disagreements"] = disagreements if isinstance(disagreements, list) else []
-
-    council = data.get("council", [])
-    cleaned["council"] = council if isinstance(council, list) else []
-
-    individual = data.get("individual_answers", [])
-    cleaned["individual_answers"] = individual if isinstance(individual, list) else []
+    # List fields: pass through if list, otherwise default to []
+    for key in ("consensus_points", "disagreements", "council", "individual_answers"):
+        val = data.get(key, [])
+        cleaned[key] = val if isinstance(val, list) else []
 
     # Pass through metadata fields
     cleaned["stage2_skipped"] = data.get("stage2_skipped", False)
@@ -274,6 +272,15 @@ def section_divider(story, styles, label: str):
     story.append(Paragraph(label.upper(), styles["section_heading"]))
 
 
+def render_paragraphs(story, text: str, style, spacing: int = 4):
+    """Split text on double-newlines and render each as a Paragraph + Spacer."""
+    for para in text.split("\n\n"):
+        para = para.strip()
+        if para:
+            story.append(Paragraph(para, style))
+            story.append(Spacer(1, spacing))
+
+
 def confidence_badge(confidence: str, note: str, styles) -> Table:
     color = CONFIDENCE_COLORS.get(confidence.lower(), SLATE)
     badge_text = f"<font color='white'><b> {xml_escape(confidence.upper())} CONFIDENCE </b></font>"
@@ -430,12 +437,7 @@ def build_pdf(data: dict, output_path: str):
 
     # ── Final Answer ───────────────────────────────────────────────────────────
     section_divider(story, styles, "Chairman's Final Answer")
-    final_answer = xml_escape(data["final_answer"])
-    for para in final_answer.split("\n\n"):
-        para = para.strip()
-        if para:
-            story.append(Paragraph(para, styles["body"]))
-            story.append(Spacer(1, 4))
+    render_paragraphs(story, xml_escape(data["final_answer"]), styles["body"])
 
     story.append(Spacer(1, 10))
 
@@ -485,11 +487,7 @@ def build_pdf(data: dict, output_path: str):
             answer = xml_escape(str(entry.get("answer", "")))
             story.append(Paragraph(model, styles["sub_heading"]))
             story.append(HRFlowable(width="100%", thickness=0.5, color=MID_GRAY, spaceAfter=6))
-            for para in answer.split("\n\n"):
-                para = para.strip()
-                if para:
-                    story.append(Paragraph(para, styles["body"]))
-                    story.append(Spacer(1, 3))
+            render_paragraphs(story, answer, styles["body"], spacing=3)
             story.append(Spacer(1, 12))
 
     # ── Build ──────────────────────────────────────────────────────────────────
