@@ -254,8 +254,8 @@ async def test_full_pipeline_mock():
     assert isinstance(result["disagreements"], list)
     assert isinstance(result["consensus_points"], list)
     assert result["confidence"] in ("high", "medium", "low", "unknown")
-    assert len(result["individual_answers"]) >= 2
-    assert len(result["peer_reviews"]) >= 2
+    assert len(result["individual_answers"]) == 4
+    assert len(result["peer_reviews"]) == 4
     assert result["chairman"] == council.CHAIRMAN["label"]
     assert isinstance(result["council"], list)
     assert result["stage2_skipped"] is False

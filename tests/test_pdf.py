@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import pytest
 import tempfile
 
@@ -57,6 +58,24 @@ VALID_COUNCIL_JSON = {
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def cleanup_temp_dirs():
+    """Track and clean up all temp directories created during a test."""
+    created = []
+    original_mkdtemp = tempfile.mkdtemp
+
+    def tracking_mkdtemp(*args, **kwargs):
+        d = original_mkdtemp(*args, **kwargs)
+        created.append(d)
+        return d
+
+    tempfile.mkdtemp = tracking_mkdtemp
+    yield
+    tempfile.mkdtemp = original_mkdtemp
+    for d in created:
+        shutil.rmtree(d, ignore_errors=True)
+
 
 def generate_pdf(data: dict, filename: str = "test.pdf") -> str:
     """Generate a PDF in a temp directory, return the path."""

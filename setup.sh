@@ -154,6 +154,14 @@ success "Created: $SKILLS_DIR (council skill)"
 # ── Write .env ───────────────────────────────────────────────
 header "Environment"
 
+# Validate values don't contain control characters (newlines, tabs, etc.)
+if [[ "$OPENROUTER_API_KEY" =~ [[:cntrl:]] ]]; then
+    error "API key contains invalid control characters."
+fi
+if [[ "$OPENCLAW_GATEWAY_TOKEN" =~ [[:cntrl:]] ]]; then
+    error "Gateway token contains invalid control characters."
+fi
+
 ENV_FILE="${DEPLOY_DIR}/.env"
 cat > "$ENV_FILE" <<EOF
 OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
@@ -193,24 +201,27 @@ EOF
 else
     # File exists — check if council skill is already registered
     if command -v python3 >/dev/null 2>&1; then
-        MERGE_OUTPUT=$(python3 -c "
-import json, sys
-with open('${OPENCLAW_JSON}', 'r') as f:
+        # Pass variables via env to avoid shell injection in Python code
+        MERGE_OUTPUT=$(OPENCLAW_JSON="$OPENCLAW_JSON" OPENROUTER_API_KEY="$OPENROUTER_API_KEY" python3 -c '
+import json, os, sys
+config_path = os.environ["OPENCLAW_JSON"]
+api_key = os.environ["OPENROUTER_API_KEY"]
+with open(config_path, "r") as f:
     config = json.load(f)
-skills = config.setdefault('skills', {})
-entries = skills.setdefault('entries', {})
-if 'council' not in entries:
-    entries['council'] = {
-        'enabled': True,
-        'env': {'OPENROUTER_API_KEY': '${OPENROUTER_API_KEY}'}
+skills = config.setdefault("skills", {})
+entries = skills.setdefault("entries", {})
+if "council" not in entries:
+    entries["council"] = {
+        "enabled": True,
+        "env": {"OPENROUTER_API_KEY": api_key}
     }
-    with open('${OPENCLAW_JSON}', 'w') as f:
+    with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
-    print('merged')
+    print("merged")
 else:
-    print('exists')
-" 2>&1)
-        if [[ $? -eq 0 ]]; then
+    print("exists")
+' 2>&1)
+        if [[ $? -eq 0 && ( "$MERGE_OUTPUT" == "merged" || "$MERGE_OUTPUT" == "exists" ) ]]; then
             if [[ "$MERGE_OUTPUT" == "merged" ]]; then
                 success "Council skill merged into existing openclaw.json"
             else
