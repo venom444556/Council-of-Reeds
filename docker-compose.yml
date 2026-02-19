@@ -1,0 +1,39 @@
+services:
+  openclaw-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openclaw-council:latest
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    ports:
+      - "18789:18789"
+    volumes:
+      # Config + memory + API keys
+      - ~/.openclaw:/home/openclaw/.openclaw
+      # Agent workspace — PDFs land here
+      - ~/openclaw/workspace:/home/openclaw/workspace
+      # Council skill (read-only mount — edit on host, live in container)
+      - ~/.openclaw/skills/council:/home/openclaw/.openclaw/skills/council:ro
+    environment:
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  openclaw-cli:
+    image: openclaw-council:latest
+    container_name: openclaw-cli
+    volumes:
+      - ~/.openclaw:/home/openclaw/.openclaw
+      - ~/openclaw/workspace:/home/openclaw/workspace
+    environment:
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    profiles:
+      - cli
+    entrypoint: ["node", "dist/index.js"]
