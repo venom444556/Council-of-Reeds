@@ -6,11 +6,15 @@ RUN apt-get update -qq && \
         python3 \
         python3-pip \
         python3-venv \
-    && pip3 install --break-system-packages \
+    && python3 -m venv /opt/council-venv \
+    && /opt/council-venv/bin/pip install --no-cache-dir \
         httpx \
         reportlab \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Pre-warm pip cache so first council run is instant
+# Add venv to PATH so council scripts use it
+ENV PATH="/opt/council-venv/bin:$PATH"
+
+# Pre-warm so first council run is instant
 RUN python3 -c "import httpx; import reportlab; print('Council deps ready')"

@@ -1,6 +1,7 @@
 """Tests for council.py — LLM Council pipeline."""
 
 import json
+import random
 import pytest
 import httpx
 import respx
@@ -14,6 +15,17 @@ import council
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def reset_council_state():
+    """Reset module-level state before each test to prevent pollution."""
+    original_key = council.OPENROUTER_API_KEY
+    original_retries = council.MAX_RETRIES
+    original_random_state = random.getstate()
+    yield
+    council.OPENROUTER_API_KEY = original_key
+    council.MAX_RETRIES = original_retries
+    random.setstate(original_random_state)
 
 MOCK_ANSWER = "This is a thoughtful model answer about the question."
 MOCK_REVIEW = "Model A provided the best answer. Model B was too brief. Model C missed key points."
@@ -78,17 +90,12 @@ async def test_stage1_partial_failure():
             return httpx.Response(500, text="Server Error")
         return httpx.Response(200, json=mock_openrouter_success())
 
+    council.MAX_RETRIES = 0
+
     with respx.mock:
         respx.post(council.OPENROUTER_API_URL).mock(side_effect=side_effect)
-
-        # Need to set retries to 0 for this test so failure is immediate
-        original_retries = council.MAX_RETRIES
-        council.MAX_RETRIES = 0
-        try:
-            async with httpx.AsyncClient() as client:
-                successes, errors = await council.stage1_first_opinions(client, "Test question")
-        finally:
-            council.MAX_RETRIES = original_retries
+        async with httpx.AsyncClient() as client:
+            successes, errors = await council.stage1_first_opinions(client, "Test question")
 
     assert len(successes) == 3
     assert len(errors) == 1
@@ -107,17 +114,13 @@ async def test_stage1_below_quorum():
             return httpx.Response(500, text="Server Error")
         return httpx.Response(200, json=mock_openrouter_success())
 
+    council.MAX_RETRIES = 0
+
     with respx.mock:
         respx.post(council.OPENROUTER_API_URL).mock(side_effect=side_effect)
-
-        original_retries = council.MAX_RETRIES
-        council.MAX_RETRIES = 0
-        try:
-            async with httpx.AsyncClient() as client:
-                with pytest.raises(RuntimeError, match="minimum"):
-                    await council.stage1_first_opinions(client, "Test question")
-        finally:
-            council.MAX_RETRIES = original_retries
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="minimum"):
+                await council.stage1_first_opinions(client, "Test question")
 
 
 # ── Stage 2 Tests ─────────────────────────────────────────────────────────────
@@ -239,15 +242,11 @@ async def test_full_pipeline_mock():
         return httpx.Response(200, json=mock_openrouter_success())
 
     # Set API key for the test
-    original_key = council.OPENROUTER_API_KEY
     council.OPENROUTER_API_KEY = "sk-or-v1-test-key"
 
-    try:
-        with respx.mock:
-            respx.post(council.OPENROUTER_API_URL).mock(side_effect=side_effect)
-            result = await council.run_council("Should I use Go or Python?")
-    finally:
-        council.OPENROUTER_API_KEY = original_key
+    with respx.mock:
+        respx.post(council.OPENROUTER_API_URL).mock(side_effect=side_effect)
+        result = await council.run_council("Should I use Go or Python?")
 
     # Verify output structure
     assert result["question"] == "Should I use Go or Python?"
@@ -282,15 +281,11 @@ async def test_fast_mode():
             return httpx.Response(200, json=mock_openrouter_success(MOCK_CHAIRMAN_JSON))
         return httpx.Response(200, json=mock_openrouter_success())
 
-    original_key = council.OPENROUTER_API_KEY
     council.OPENROUTER_API_KEY = "sk-or-v1-test-key"
 
-    try:
-        with respx.mock:
-            respx.post(council.OPENROUTER_API_URL).mock(side_effect=side_effect)
-            result = await council.run_council("Quick question?", fast=True)
-    finally:
-        council.OPENROUTER_API_KEY = original_key
+    with respx.mock:
+        respx.post(council.OPENROUTER_API_URL).mock(side_effect=side_effect)
+        result = await council.run_council("Quick question?", fast=True)
 
     assert result["stage2_skipped"] is True
     assert result["peer_reviews"] == []

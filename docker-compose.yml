@@ -7,7 +7,7 @@ services:
     container_name: openclaw-gateway
     restart: unless-stopped
     ports:
-      - "18789:18789"
+      - "127.0.0.1:18789:18789"
     volumes:
       # Config + memory + API keys
       - ~/.openclaw:/home/openclaw/.openclaw
@@ -18,6 +18,8 @@ services:
     environment:
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    networks:
+      - council
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
       interval: 30s
@@ -34,6 +36,12 @@ services:
     environment:
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    networks:
+      - council
     profiles:
       - cli
     entrypoint: ["node", "dist/index.js"]
+
+networks:
+  council:
+    driver: bridge

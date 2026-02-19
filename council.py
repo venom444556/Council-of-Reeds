@@ -78,8 +78,30 @@ async def call_model(
 
             resp.raise_for_status()
             data = resp.json()
-            content = data["choices"][0]["message"]["content"].strip()
-            return (True, content)
+
+            # Validate response structure
+            choices = data.get("choices")
+            if not choices or not isinstance(choices, list):
+                last_error = "Invalid API response: missing or empty choices"
+                if attempt < MAX_RETRIES:
+                    wait = 2 * (attempt + 1)
+                    print(f"   ⏳ {label or model}: {last_error}, retrying in {wait}s...", file=sys.stderr)
+                    await asyncio.sleep(wait)
+                    continue
+                return (False, f"{label or model}: {last_error}")
+
+            message = choices[0].get("message", {})
+            content = message.get("content")
+            if content is None:
+                last_error = "Invalid API response: missing message content"
+                if attempt < MAX_RETRIES:
+                    wait = 2 * (attempt + 1)
+                    print(f"   ⏳ {label or model}: {last_error}, retrying in {wait}s...", file=sys.stderr)
+                    await asyncio.sleep(wait)
+                    continue
+                return (False, f"{label or model}: {last_error}")
+
+            return (True, content.strip())
 
         except Exception as e:
             last_error = str(e)
@@ -143,10 +165,10 @@ async def stage1_first_opinions(client: httpx.AsyncClient, question: str) -> tup
 
 def anonymize_answers(answers: list[dict], exclude_id: str) -> str:
     """Build an anonymized view of other councilors' answers for review."""
-    labels = ["Model A", "Model B", "Model C"]
     others = [a for a in answers if a["id"] != exclude_id]
     # Shuffle so models can't pattern-match on ordering
     random.shuffle(others)
+    labels = [f"Model {chr(65 + i)}" for i in range(len(others))]
     sections = []
     for label, other in zip(labels, others):
         sections.append(f"**{label}:**\n{other['answer']}")
@@ -222,7 +244,7 @@ def parse_chairman_json(raw: str) -> dict:
         except json.JSONDecodeError:
             pass
 
-    # Strategy 3: Find outermost { ... } block
+    # Strategy 3: Find outermost { ... } block (greedy — handles nested braces)
     brace_match = re.search(r"\{[\s\S]*\}", raw)
     if brace_match:
         try:
@@ -343,9 +365,6 @@ async def stage3_chairman(
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 async def run_council(question: str, fast: bool = False) -> dict:
-    if not OPENROUTER_API_KEY:
-        print(json.dumps({"error": "OPENROUTER_API_KEY not set in environment"}))
-        sys.exit(1)
 
     started_at = datetime.now(timezone.utc)
     t0 = time.monotonic()
@@ -396,6 +415,10 @@ async def run_council(question: str, fast: bool = False) -> dict:
 
 
 def main():
+    if not OPENROUTER_API_KEY:
+        print("Error: OPENROUTER_API_KEY not set in environment", file=sys.stderr)
+        sys.exit(1)
+
     parser = argparse.ArgumentParser(
         description="LLM Council - Multi-model deliberation via OpenRouter"
     )
@@ -414,7 +437,7 @@ def main():
         result = asyncio.run(run_council(question, fast=args.fast))
         print(json.dumps(result, indent=2, ensure_ascii=False))
     except RuntimeError as e:
-        print(json.dumps({"error": str(e)}, indent=2, ensure_ascii=False))
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

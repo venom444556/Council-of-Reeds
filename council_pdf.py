@@ -430,11 +430,11 @@ def build_pdf(data: dict, output_path: str):
 
     # ── Final Answer ───────────────────────────────────────────────────────────
     section_divider(story, styles, "Chairman's Final Answer")
-    final_answer = data["final_answer"]
+    final_answer = xml_escape(data["final_answer"])
     for para in final_answer.split("\n\n"):
         para = para.strip()
         if para:
-            story.append(Paragraph(xml_escape(para), styles["body"]))
+            story.append(Paragraph(para, styles["body"]))
             story.append(Spacer(1, 4))
 
     story.append(Spacer(1, 10))
@@ -482,13 +482,13 @@ def build_pdf(data: dict, output_path: str):
             if not isinstance(entry, dict):
                 continue
             model  = xml_escape(str(entry.get("model", "Unknown")))
-            answer = str(entry.get("answer", ""))
+            answer = xml_escape(str(entry.get("answer", "")))
             story.append(Paragraph(model, styles["sub_heading"]))
             story.append(HRFlowable(width="100%", thickness=0.5, color=MID_GRAY, spaceAfter=6))
             for para in answer.split("\n\n"):
                 para = para.strip()
                 if para:
-                    story.append(Paragraph(xml_escape(para), styles["body"]))
+                    story.append(Paragraph(para, styles["body"]))
                     story.append(Spacer(1, 3))
             story.append(Spacer(1, 12))
 

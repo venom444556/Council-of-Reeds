@@ -50,15 +50,14 @@ header "Preflight"
 command -v docker  >/dev/null 2>&1 || error "Docker not found. Install it first: https://docs.docker.com/engine/install/"
 command -v curl    >/dev/null 2>&1 || error "curl not found. Run: apt-get install curl"
 
-DOCKER_COMPOSE_OK=false
+# Define docker_compose wrapper for v2 plugin or legacy standalone
 if docker compose version >/dev/null 2>&1; then
-    DOCKER_COMPOSE_OK=true
+    docker_compose() { docker compose "$@"; }
 elif command -v docker-compose >/dev/null 2>&1; then
-    DOCKER_COMPOSE_OK=true
-    # Alias for remainder of script
-    shim_docker_compose() { docker-compose "$@"; }
+    docker_compose() { docker-compose "$@"; }
+else
+    error "Docker Compose v2 not found. Run: apt-get install docker-compose-plugin"
 fi
-$DOCKER_COMPOSE_OK || error "Docker Compose v2 not found. Run: apt-get install docker-compose-plugin"
 
 success "Docker $(docker --version | awk '{print $3}' | tr -d ',')"
 success "Docker Compose ready"
@@ -94,14 +93,14 @@ if $UPDATE_MODE; then
 
     cd "$DEPLOY_DIR"
     log "Pulling latest base image and rebuilding..."
-    docker compose build --pull 2>&1 | while IFS= read -r line; do
+    docker_compose build --pull 2>&1 | while IFS= read -r line; do
         echo "   $line"
     done
     success "Image rebuilt"
 
     log "Restarting gateway..."
-    docker compose down
-    docker compose up -d openclaw-gateway
+    docker_compose down
+    docker_compose up -d openclaw-gateway
     sleep 3
 
     if curl -sf http://localhost:18789/health >/dev/null 2>&1; then
@@ -133,7 +132,13 @@ success "OpenRouter key validated (sk-or-v1-...)"
 
 # Gateway token (generate if not provided)
 if [[ -z "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
-    OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32 2>/dev/null || cat /proc/sys/kernel/random/uuid | tr -d '-')
+    if command -v openssl >/dev/null 2>&1; then
+        OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)
+    elif [[ -r /dev/urandom ]]; then
+        OPENCLAW_GATEWAY_TOKEN=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    else
+        error "Cannot generate secure random token. Set OPENCLAW_GATEWAY_TOKEN manually."
+    fi
     log "Generated gateway token: ${OPENCLAW_GATEWAY_TOKEN}"
 fi
 success "Gateway token ready"
@@ -188,7 +193,7 @@ EOF
 else
     # File exists — check if council skill is already registered
     if command -v python3 >/dev/null 2>&1; then
-        python3 -c "
+        MERGE_OUTPUT=$(python3 -c "
 import json, sys
 with open('${OPENCLAW_JSON}', 'r') as f:
     config = json.load(f)
@@ -204,12 +209,15 @@ if 'council' not in entries:
     print('merged')
 else:
     print('exists')
-" 2>/dev/null
-        MERGE_RESULT=$?
-        if [[ $MERGE_RESULT -eq 0 ]]; then
-            success "Council skill merged into existing openclaw.json"
+" 2>&1)
+        if [[ $? -eq 0 ]]; then
+            if [[ "$MERGE_OUTPUT" == "merged" ]]; then
+                success "Council skill merged into existing openclaw.json"
+            else
+                success "Council skill already registered in openclaw.json"
+            fi
         else
-            warn "Could not merge into openclaw.json — add council skill config manually"
+            warn "Could not merge into openclaw.json: ${MERGE_OUTPUT} — add council skill config manually"
         fi
     else
         warn "openclaw.json exists but python3 not available for merge — add council skill manually"
@@ -265,13 +273,13 @@ log "Running OpenClaw onboard wizard..."
 log "(This sets up your messaging channel — Telegram, WhatsApp, etc.)"
 echo ""
 
-docker compose run --rm openclaw-cli onboard
+docker_compose run --rm openclaw-cli onboard
 
 # ── Start the gateway ────────────────────────────────────────
 header "Launch"
 
 log "Starting OpenClaw gateway..."
-docker compose up -d openclaw-gateway
+docker_compose up -d openclaw-gateway
 sleep 3
 
 # Health check
@@ -284,7 +292,7 @@ fi
 # ── Dashboard URL ────────────────────────────────────────────
 header "Dashboard"
 
-DASHBOARD_URL=$(docker compose run --rm openclaw-cli dashboard --no-open 2>/dev/null | grep -o 'http://[^ ]*' | head -1 || echo "http://localhost:18789/?token=${OPENCLAW_GATEWAY_TOKEN}")
+DASHBOARD_URL=$(docker_compose run --rm openclaw-cli dashboard --no-open 2>/dev/null | grep -o 'http://[^ ]*' | head -1 || echo "http://localhost:18789/?token=${OPENCLAW_GATEWAY_TOKEN}")
 success "Dashboard: ${DASHBOARD_URL}"
 
 # ── Final summary ────────────────────────────────────────────
