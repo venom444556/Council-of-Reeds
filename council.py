@@ -45,7 +45,8 @@ async def call_model(
     client: httpx.AsyncClient, model: str, messages: list, label: str = ""
 ) -> tuple[bool, str]:
     """Call a model via OpenRouter. Returns (success, content) tuple."""
-    last_error = None
+    tag = label or model
+
     for attempt in range(MAX_RETRIES + 1):
         try:
             resp = await client.post(
@@ -67,13 +68,13 @@ async def call_model(
 
             # Retry on rate limit or server error
             if resp.status_code == 429 or resp.status_code >= 500:
-                retry_after = float(resp.headers.get("Retry-After", 2 * (attempt + 1)))
-                last_error = f"HTTP {resp.status_code}"
+                wait = float(resp.headers.get("Retry-After", 2 * (attempt + 1)))
+                error = f"HTTP {resp.status_code}"
                 if attempt < MAX_RETRIES:
-                    print(f"   ⏳ {label or model}: {last_error}, retrying in {retry_after}s...", file=sys.stderr)
-                    await asyncio.sleep(retry_after)
+                    print(f"   ⏳ {tag}: {error}, retrying in {wait}s...", file=sys.stderr)
+                    await asyncio.sleep(wait)
                     continue
-                return (False, f"{label or model}: {last_error} after {MAX_RETRIES + 1} attempts")
+                return (False, f"{tag}: {error} after {MAX_RETRIES + 1} attempts")
 
             resp.raise_for_status()
             data = resp.json()
@@ -81,37 +82,26 @@ async def call_model(
             # Validate response structure
             choices = data.get("choices")
             if not choices or not isinstance(choices, list):
-                last_error = "Invalid API response: missing or empty choices"
-                if attempt < MAX_RETRIES:
-                    wait = 2 * (attempt + 1)
-                    print(f"   ⏳ {label or model}: {last_error}, retrying in {wait}s...", file=sys.stderr)
-                    await asyncio.sleep(wait)
-                    continue
-                return (False, f"{label or model}: {last_error}")
-
-            message = choices[0].get("message", {})
-            content = message.get("content")
-            if content is None:
-                last_error = "Invalid API response: missing message content"
-                if attempt < MAX_RETRIES:
-                    wait = 2 * (attempt + 1)
-                    print(f"   ⏳ {label or model}: {last_error}, retrying in {wait}s...", file=sys.stderr)
-                    await asyncio.sleep(wait)
-                    continue
-                return (False, f"{label or model}: {last_error}")
-
-            return (True, content.strip())
+                error = "Invalid API response: missing or empty choices"
+            else:
+                content = choices[0].get("message", {}).get("content")
+                if content is None:
+                    error = "Invalid API response: missing message content"
+                else:
+                    return (True, content.strip())
 
         except Exception as e:
-            last_error = str(e)
-            if attempt < MAX_RETRIES:
-                wait = 2 * (attempt + 1)
-                print(f"   ⏳ {label or model}: {last_error}, retrying in {wait}s...", file=sys.stderr)
-                await asyncio.sleep(wait)
-                continue
-            return (False, f"{label or model}: {last_error}")
+            error = str(e)
 
-    return (False, f"{label or model}: {last_error}")
+        # Shared retry-or-fail for all error paths
+        if attempt < MAX_RETRIES:
+            wait = 2 * (attempt + 1)
+            print(f"   ⏳ {tag}: {error}, retrying in {wait}s...", file=sys.stderr)
+            await asyncio.sleep(wait)
+        else:
+            return (False, f"{tag}: {error}")
+
+    return (False, f"{tag}: unknown error")
 
 
 # ── Stage 1: First Opinions ────────────────────────────────────────────────────
@@ -270,27 +260,19 @@ async def stage3_chairman(
         f"**{a['label']}:**\n{a['answer']}" for a in answers
     )
 
-    if fast_mode or not reviews:
-        chairman_prompt = (
-            f"You are the Chairman of an LLM Council. Your council was asked:\n\n"
-            f"**QUESTION:** {question}\n\n"
-            f"---\n\n"
-            f"**INDIVIDUAL ANSWERS:**\n\n{answers_block}\n\n"
-            f"---\n\n"
-        )
-    else:
+    chairman_prompt = (
+        f"You are the Chairman of an LLM Council. Your council was asked:\n\n"
+        f"**QUESTION:** {question}\n\n"
+        f"---\n\n"
+        f"**INDIVIDUAL ANSWERS:**\n\n{answers_block}\n\n"
+        f"---\n\n"
+    )
+
+    if not fast_mode and reviews:
         reviews_block = "\n\n".join(
             f"**{r['label']}'s review of others:**\n{r['review']}" for r in reviews
         )
-        chairman_prompt = (
-            f"You are the Chairman of an LLM Council. Your council was asked:\n\n"
-            f"**QUESTION:** {question}\n\n"
-            f"---\n\n"
-            f"**INDIVIDUAL ANSWERS:**\n\n{answers_block}\n\n"
-            f"---\n\n"
-            f"**PEER REVIEWS:**\n\n{reviews_block}\n\n"
-            f"---\n\n"
-        )
+        chairman_prompt += f"**PEER REVIEWS:**\n\n{reviews_block}\n\n---\n\n"
 
     chairman_prompt += (
         "Your job: Produce a response in the following JSON format (and ONLY JSON, no markdown wrapper):\n\n"
@@ -346,16 +328,17 @@ async def stage3_chairman(
         }
 
     # Validate required keys exist and have correct types
-    if not isinstance(synthesis.get("final_answer"), str):
-        synthesis["final_answer"] = str(synthesis.get("final_answer", ""))
-    if not isinstance(synthesis.get("disagreements"), list):
-        synthesis["disagreements"] = []
-    if not isinstance(synthesis.get("consensus_points"), list):
-        synthesis["consensus_points"] = []
-    if not isinstance(synthesis.get("confidence"), str):
-        synthesis["confidence"] = "unknown"
-    if not isinstance(synthesis.get("confidence_note"), str):
-        synthesis["confidence_note"] = ""
+    _SCHEMA = {
+        "final_answer":    (str, ""),
+        "disagreements":   (list, []),
+        "consensus_points":(list, []),
+        "confidence":      (str, "unknown"),
+        "confidence_note": (str, ""),
+    }
+    for key, (expected_type, default) in _SCHEMA.items():
+        val = synthesis.get(key)
+        if not isinstance(val, expected_type):
+            synthesis[key] = str(val) if expected_type is str and val is not None else default
 
     print("   ✓ Chairman done", file=sys.stderr)
     return synthesis
@@ -388,14 +371,14 @@ async def run_council(question: str, fast: bool = False) -> dict:
 
     duration = round(time.monotonic() - t0, 1)
 
-    # Assemble full output
+    # Assemble full output (synthesis keys guaranteed by _SCHEMA validation)
     output = {
         "question": question,
-        "final_answer": synthesis.get("final_answer", ""),
-        "disagreements": synthesis.get("disagreements", []),
-        "consensus_points": synthesis.get("consensus_points", []),
-        "confidence": synthesis.get("confidence", "unknown"),
-        "confidence_note": synthesis.get("confidence_note", ""),
+        "final_answer": synthesis["final_answer"],
+        "disagreements": synthesis["disagreements"],
+        "consensus_points": synthesis["consensus_points"],
+        "confidence": synthesis["confidence"],
+        "confidence_note": synthesis["confidence_note"],
         "individual_answers": [
             {"model": a["label"], "answer": a["answer"]} for a in answers
         ],
